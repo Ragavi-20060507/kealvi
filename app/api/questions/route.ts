@@ -1,31 +1,66 @@
 import { supabase } from "@/lib/supabase";
-import { getQuestionsPage, searchQuestions } from "@/lib/questions";
 
-const PAGE_SIZE = 10;
+export async function GET() {
+  try {
+    const { data, error } = await supabase
+      .from("questions")
+      .select("id, body, author, votes")
+      .order("created_at", { ascending: false });
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const q = searchParams.get("q")?.trim();
+    if (error) {
+      return Response.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
 
-  if (q) {
-    const questions = await searchQuestions(q, PAGE_SIZE);
-    return Response.json({ questions, hasMore: false });
+    return Response.json({
+      questions: data ?? [],
+      hasMore: false,
+    });
+  } catch (err: any) {
+    return Response.json(
+      { error: err.message },
+      { status: 500 }
+    );
   }
-
-  const offset = Number(searchParams.get("offset") ?? 0);
-  const { questions, hasMore } = await getQuestionsPage(offset, PAGE_SIZE);
-  return Response.json({ questions, hasMore });
 }
 
 export async function POST(req: Request) {
-  const { body, author } = await req.json();
+  try {
+    const body = await req.json();
 
-  const { data, error } = await supabase
-    .from("questions")
-    .insert({ body, author })
-    .select()
-    .single();
+    if (!body?.body) {
+      return Response.json(
+        { error: "Body is required" },
+        { status: 400 }
+      );
+    }
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json(data);
+    const { data, error } = await supabase
+      .from("questions")
+      .insert([
+        {
+          body: body.body,
+          author: body.author ?? "anonymous",
+          votes: 0,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      return Response.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return Response.json(data);
+  } catch (err: any) {
+    return Response.json(
+      { error: err.message },
+      { status: 500 }
+    );
+  }
 }
