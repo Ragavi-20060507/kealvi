@@ -1,56 +1,48 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({});
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-
     const body = await req.json();
+    const topic = body.topic;
 
-    const prompt = `
-Create ONE poll.
+    // 🔥 dynamic fake logic (until Gemini is added)
+    let options: string[] = [];
 
-Topic: ${body.topic}
+    if (topic.toLowerCase().includes("horror")) {
+      options = [
+        "The Conjuring",
+        "Hereditary",
+        "The Exorcist",
+        "Insidious",
+      ];
+    } else if (topic.toLowerCase().includes("movie")) {
+      options = [
+        "Inception",
+        "Interstellar",
+        "The Dark Knight",
+      ];
+    } else {
+      options = [
+        `Option related to ${topic} 1`,
+        `Option related to ${topic} 2`,
+        `Option related to ${topic} 3`,
+      ];
+    }
 
-Return ONLY valid JSON.
-
-Format:
-
-{
- "question":"...",
- "options":["option1","option2","option3","option4"]
-}
-`;
-
-    const res = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
+    return NextResponse.json({
+      success: true,
+      poll: {
+        question: `What do you think about: ${topic}?`,
+        options,
+      },
     });
 
-    let text = res.text ?? "";
-
-    // remove markdown wrappers if Gemini adds them
-    text = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-
-    const poll = JSON.parse(text);
-
-    return Response.json(poll);
-
   } catch (error) {
-
     console.error(error);
 
-    return Response.json(
-      {
-        error: "Failed generating poll"
-      },
-      {
-        status: 500
-      }
+    return NextResponse.json(
+      { success: false, error: "Server error" },
+      { status: 500 }
     );
-
   }
 }

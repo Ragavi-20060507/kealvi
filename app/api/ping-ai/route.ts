@@ -2,30 +2,13 @@ import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({});
 
-export async function POST(req: Request) {
-  const body = await req.json();
-
-  const prompt = `
-Create ONE poll.
-
-Topic: ${body.topic}
-
-Return ONLY JSON:
-
-{
- "question":"...",
- "options":["option1","option2","option3","option4"]
-}
-`;
-
+export async function GET() {
   const res = await ai.models.generateContent({
     model: "gemini-2.5-flash",
-    contents: prompt,
+    contents: "Say 'it works' and nothing else.",
   });
 
-  const text = res.text ?? "";
-
-  return Response.json(
-    JSON.parse(text)
-  );
+  return Response.json({
+    reply: res.text,
+  });
 }
