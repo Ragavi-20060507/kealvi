@@ -5,7 +5,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const topic = body.topic;
 
-    // 🔥 dynamic fake logic (until Gemini is added)
     let options: string[] = [];
 
     if (topic.toLowerCase().includes("horror")) {
