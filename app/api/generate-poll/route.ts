@@ -2,46 +2,75 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const topic = body.topic;
+    const { topic } = await req.json();
+
+    if (!topic) {
+      return NextResponse.json(
+        { success: false, error: "Topic required" },
+        { status: 400 }
+      );
+    }
+
+    const lowerTopic = topic.toLowerCase();
 
     let options: string[] = [];
 
-    if (topic.toLowerCase().includes("horror")) {
+    if (lowerTopic.includes("horror")) {
       options = [
         "The Conjuring",
         "Hereditary",
         "The Exorcist",
         "Insidious",
       ];
-    } else if (topic.toLowerCase().includes("movie")) {
+    } 
+    else if (lowerTopic.includes("movie")) {
       options = [
         "Inception",
         "Interstellar",
         "The Dark Knight",
+        "Avatar"
       ];
-    } else {
+    } 
+    else if (lowerTopic.includes("food")) {
       options = [
-        `Option related to ${topic} 1`,
-        `Option related to ${topic} 2`,
-        `Option related to ${topic} 3`,
+        "Pizza",
+        "Burger",
+        "Pasta",
+        "Biryani"
+      ];
+    } 
+    else {
+      options = [
+        `${topic} Option 1`,
+        `${topic} Option 2`,
+        `${topic} Option 3`,
+        `${topic} Option 4`,
       ];
     }
 
     return NextResponse.json({
       success: true,
       poll: {
-        question: `What do you think about: ${topic}?`,
+        question: topic,
         options,
       },
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("API Error:", error);
 
     return NextResponse.json(
-      { success: false, error: "Server error" },
+      {
+        success: false,
+        error: "Invalid request",
+      },
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    message: "API is running",
+  });
 }

@@ -19,13 +19,24 @@ export default function PollPage() {
         body: JSON.stringify({ topic }),
       });
 
+      // Check if API failed
+      if (!res.ok) {
+        const text = await res.text();
+        console.log("API Error:", text);
+        throw new Error("API failed");
+      }
+
       const data = await res.json();
 
-      // ✅ FIX: store only poll object
-      setPoll(data.poll);
+      if (data.success) {
+        setPoll(data.poll);
+      } else {
+        alert(data.error || "Failed to generate poll");
+      }
 
     } catch (error) {
       console.error("Error generating poll:", error);
+      alert("Something went wrong");
     }
 
     setLoading(false);
@@ -49,17 +60,23 @@ export default function PollPage() {
         {loading ? "Generating..." : "Generate Poll"}
       </button>
 
-      {/* ✅ Safe render */}
       {poll && (
         <div className="mt-8">
-          <h2 className="text-xl font-bold">{poll.question}</h2>
+          <h2 className="text-xl font-bold">
+            {poll.question}
+          </h2>
 
           <div className="mt-4">
-            {(poll.options || []).map((opt: string, index: number) => (
-              <div key={index} className="border p-3 mt-2">
-                {opt}
-              </div>
-            ))}
+            {(poll.options || []).map(
+              (opt: string, index: number) => (
+                <div
+                  key={index}
+                  className="border p-3 mt-2"
+                >
+                  {opt}
+                </div>
+              )
+            )}
           </div>
         </div>
       )}

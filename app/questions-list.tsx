@@ -34,11 +34,15 @@ export default function QuestionsList({
           : `/api/questions`;
 
         const res = await fetch(url);
-        const data = await res.json();
 
+        if (!res.ok) {
+          console.error("API error:", res.status);
+          return;
+        }
+
+        const data = await res.json();
         const incoming = data.questions ?? [];
 
-        // ✅ REMOVE DUPLICATES PROPERLY
         setQuestions((prev) => {
           const map = new Map();
 
@@ -59,39 +63,67 @@ export default function QuestionsList({
   }, [query]);
 
   async function submit() {
-    if (!draft.trim()) return;
+  if (!draft.trim()) return;
 
-    const res = await fetch("/api/questions", {
+  const normalizedDraft = draft.trim().toLowerCase();
+
+  // Check if question already exists
+  const existingQuestion = questions.find(
+    (q) => q.body.trim().toLowerCase() === normalizedDraft
+  );
+
+  if (existingQuestion) {
+    // Increase vote locally
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === existingQuestion.id
+          ? { ...q, votes: q.votes + 1 }
+          : q
+      )
+    );
+
+    // Send vote to server
+    await fetch(`/api/questions/${existingQuestion.id}/vote`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        body: draft,
+        voterId: getVoterId(),
       }),
     });
 
-    const created = await res.json();
-
-    setQuestions((prev) => {
-      if (!created?.id) return prev;
-
-      const exists = prev.some((q) => q.id === created.id);
-      if (exists) return prev;
-
-      return [
-        {
-          id: created.id,
-          body: created.body,
-          author: created.author,
-          votes: created.votes ?? 0,
-        },
-        ...prev,
-      ];
-    });
-
     setDraft("");
+    return;
   }
+
+  // Create new question
+  const res = await fetch("/api/questions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      body: draft,
+    }),
+  });
+
+  if (!res.ok) return;
+
+  const created = await res.json();
+
+  setQuestions((prev) => [
+    {
+      id: created.id,
+      body: created.body,
+      author: created.author,
+      votes: created.votes ?? 0,
+    },
+    ...prev,
+  ]);
+
+  setDraft("");
+}
 
   async function upvote(id: string) {
     setQuestions((prev) =>
@@ -127,6 +159,8 @@ export default function QuestionsList({
         `/api/questions?offset=${questions.length}`
       );
 
+      if (!res.ok) return;
+
       const data = await res.json();
 
       setQuestions((prev) => {
@@ -147,6 +181,7 @@ export default function QuestionsList({
 
   return (
     <div className="space-y-4">
+      {/* Ask question */}
       <div className="flex gap-2">
         <input
           value={draft}
@@ -155,14 +190,12 @@ export default function QuestionsList({
           className="flex-1 rounded border px-3 py-2"
         />
 
-        <button
-          onClick={submit}
-          className="rounded border px-4 py-2"
-        >
+        <button onClick={submit} className="rounded border px-4 py-2">
           Ask
         </button>
       </div>
 
+      {/* Search */}
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -170,6 +203,7 @@ export default function QuestionsList({
         className="w-full rounded border px-3 py-2"
       />
 
+      {/* List */}
       <ul className="space-y-3">
         {questions.map((q) => {
           if (!q?.id) return null;
@@ -192,6 +226,7 @@ export default function QuestionsList({
         })}
       </ul>
 
+      {/* Load more */}
       {hasMore && (
         <button
           onClick={loadMore}
