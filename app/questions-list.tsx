@@ -17,118 +17,77 @@ export default function QuestionsList({
   initialQuestions: Question[];
   initialHasMore: boolean;
 }) {
-  const [questions, setQuestions] = useState<Question[]>(
-    initialQuestions ?? []
-  );
+  const [allQuestions, setAllQuestions] =
+    useState<Question[]>(initialQuestions);
+
+  const [questions, setQuestions] =
+    useState<Question[]>(initialQuestions);
 
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
 
+  // Search functionality
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      try {
-        const url = query
-          ? `/api/questions?q=${encodeURIComponent(query)}`
-          : `/api/questions`;
+    if (!query.trim()) {
+      setQuestions(allQuestions);
+      return;
+    }
 
-        const res = await fetch(url);
-
-        if (!res.ok) {
-          console.error("API error:", res.status);
-          return;
-        }
-
-        const data = await res.json();
-        const incoming = data.questions ?? [];
-
-        setQuestions((prev) => {
-          const map = new Map();
-
-          [...prev, ...incoming].forEach((q) => {
-            if (q?.id) map.set(q.id, q);
-          });
-
-          return Array.from(map.values());
-        });
-
-        setHasMore(data.hasMore ?? false);
-      } catch (err) {
-        console.error(err);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  async function submit() {
-  if (!draft.trim()) return;
-
-  const normalizedDraft = draft.trim().toLowerCase();
-
-  // Check if question already exists
-  const existingQuestion = questions.find(
-    (q) => q.body.trim().toLowerCase() === normalizedDraft
-  );
-
-  if (existingQuestion) {
-    // Increase vote locally
-    setQuestions((prev) =>
-      prev.map((q) =>
-        q.id === existingQuestion.id
-          ? { ...q, votes: q.votes + 1 }
-          : q
-      )
+    const filtered = allQuestions.filter((q) =>
+      q.body.toLowerCase().includes(query.toLowerCase())
     );
 
-    // Send vote to server
-    await fetch(`/api/questions/${existingQuestion.id}/vote`, {
+    setQuestions(filtered);
+  }, [query, allQuestions]);
+
+  async function submit() {
+    if (!draft.trim()) return;
+
+    const normalizedDraft = draft.trim().toLowerCase();
+
+    const existingQuestion = allQuestions.find(
+      (q) => q.body.trim().toLowerCase() === normalizedDraft
+    );
+
+    if (existingQuestion) {
+      await upvote(existingQuestion.id);
+      setDraft("");
+      return;
+    }
+
+    const res = await fetch("/api/questions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        voterId: getVoterId(),
+        body: draft,
       }),
     });
 
-    setDraft("");
-    return;
-  }
+    if (!res.ok) return;
 
-  // Create new question
-  const res = await fetch("/api/questions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      body: draft,
-    }),
-  });
+    const created = await res.json();
 
-  if (!res.ok) return;
-
-  const created = await res.json();
-
-  setQuestions((prev) => [
-    {
+    const newQuestion = {
       id: created.id,
       body: created.body,
       author: created.author,
       votes: created.votes ?? 0,
-    },
-    ...prev,
-  ]);
+    };
 
-  setDraft("");
-}
+    setAllQuestions((prev) => [newQuestion, ...prev]);
+    setDraft("");
+  }
 
   async function upvote(id: string) {
-    setQuestions((prev) =>
+    setAllQuestions((prev) =>
       prev.map((q) =>
-        q.id === id ? { ...q, votes: q.votes + 1 } : q
+        q.id === id
+          ? { ...q, votes: q.votes + 1 }
+          : q
       )
     );
 
@@ -143,9 +102,11 @@ export default function QuestionsList({
     });
 
     if (!res.ok) {
-      setQuestions((prev) =>
+      setAllQuestions((prev) =>
         prev.map((q) =>
-          q.id === id ? { ...q, votes: q.votes - 1 } : q
+          q.id === id
+            ? { ...q, votes: q.votes - 1 }
+            : q
         )
       );
     }
@@ -156,18 +117,20 @@ export default function QuestionsList({
 
     try {
       const res = await fetch(
-        `/api/questions?offset=${questions.length}`
+        `/api/questions?offset=${allQuestions.length}`
       );
 
       if (!res.ok) return;
 
       const data = await res.json();
 
-      setQuestions((prev) => {
+      const newQuestions = data.questions ?? [];
+
+      setAllQuestions((prev) => {
         const map = new Map();
 
-        [...prev, ...(data.questions ?? [])].forEach((q) => {
-          if (q?.id) map.set(q.id, q);
+        [...prev, ...newQuestions].forEach((q) => {
+          map.set(q.id, q);
         });
 
         return Array.from(map.values());
@@ -181,7 +144,7 @@ export default function QuestionsList({
 
   return (
     <div className="space-y-4">
-      {/* Ask question */}
+      {/* Ask Question */}
       <div className="flex gap-2">
         <input
           value={draft}
@@ -190,12 +153,15 @@ export default function QuestionsList({
           className="flex-1 rounded border px-3 py-2"
         />
 
-        <button onClick={submit} className="rounded border px-4 py-2">
+        <button
+          onClick={submit}
+          className="rounded border px-4 py-2"
+        >
           Ask
         </button>
       </div>
 
-      {/* Search */}
+      {/* Search Box */}
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -203,12 +169,14 @@ export default function QuestionsList({
         className="w-full rounded border px-3 py-2"
       />
 
-      {/* List */}
+      {/* Questions */}
       <ul className="space-y-3">
-        {questions.map((q) => {
-          if (!q?.id) return null;
-
-          return (
+        {questions.length === 0 ? (
+          <li className="rounded border p-3 text-center">
+            No questions found
+          </li>
+        ) : (
+          questions.map((q) => (
             <li
               key={q.id}
               className="flex items-center gap-3 rounded border p-3"
@@ -222,18 +190,18 @@ export default function QuestionsList({
 
               <span>{q.body}</span>
             </li>
-          );
-        })}
+          ))
+        )}
       </ul>
 
-      {/* Load more */}
-      {hasMore && (
+      {/* Load More */}
+      {!query && hasMore && (
         <button
           onClick={loadMore}
           disabled={loading}
           className="rounded border px-4 py-2"
         >
-          {loading ? "Loading..." : "Load more"}
+          {loading ? "Loading..." : "Load More"}
         </button>
       )}
     </div>

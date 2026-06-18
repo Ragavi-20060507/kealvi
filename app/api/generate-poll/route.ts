@@ -6,63 +6,124 @@ export async function POST(req: Request) {
 
     if (!topic) {
       return NextResponse.json(
-        { success: false, error: "Topic required" },
+        {
+          success: false,
+          error: "Topic required",
+        },
         { status: 400 }
       );
     }
 
     const lowerTopic = topic.toLowerCase();
 
+    let question = topic;
     let options: string[] = [];
 
     if (lowerTopic.includes("horror")) {
+      question = "Which horror movie do you like most?";
       options = [
         "The Conjuring",
         "Hereditary",
-        "The Exorcist",
         "Insidious",
+        "The Exorcist",
       ];
-    } 
+    }
+
+    else if (lowerTopic.includes("sport")) {
+      question = "Which sport do you enjoy the most?";
+      options = [
+        "Cricket",
+        "Football",
+        "Basketball",
+        "Tennis",
+      ];
+    }
+
+    else if (lowerTopic.includes("programming")) {
+      question = "Which programming language do you prefer?";
+      options = [
+        "Python",
+        "JavaScript",
+        "Java",
+        "C++",
+      ];
+    }
+
     else if (lowerTopic.includes("movie")) {
+      question = "Which movie do you like most?";
       options = [
         "Inception",
         "Interstellar",
+        "Avatar",
         "The Dark Knight",
-        "Avatar"
       ];
-    } 
+    }
+
     else if (lowerTopic.includes("food")) {
+      question = "Which food do you prefer?";
       options = [
         "Pizza",
         "Burger",
         "Pasta",
-        "Biryani"
+        "Biryani",
       ];
-    } 
-    else {
+    }
+
+    else if (lowerTopic.includes("social")) {
+      question = "Which social media platform do you use most?";
       options = [
-        `${topic} Option 1`,
-        `${topic} Option 2`,
-        `${topic} Option 3`,
-        `${topic} Option 4`,
+        "Instagram",
+        "YouTube",
+        "Facebook",
+        "X (Twitter)",
+      ];
+    }
+
+    else if (lowerTopic.includes("music")) {
+      question = "Which music genre do you prefer?";
+      options = [
+        "Pop",
+        "Rock",
+        "Hip Hop",
+        "Classical",
+      ];
+    }
+
+    else if (lowerTopic.includes("mobile")) {
+      question = "Which mobile brand do you prefer?";
+      options = [
+        "Apple",
+        "Samsung",
+        "OnePlus",
+        "Xiaomi",
+      ];
+    }
+
+    else {
+      question = "Choose your favorite option";
+      options = [
+        "Option A",
+        "Option B",
+        "Option C",
+        "Option D",
       ];
     }
 
     return NextResponse.json({
       success: true,
       poll: {
-        question: topic,
+        question,
         options,
       },
     });
 
   } catch (error) {
-    console.error("API Error:", error);
+    console.error(error);
 
     return NextResponse.json(
       {
         success: false,
-        error: "Invalid request",
+        error: "Failed to generate poll",
       },
       { status: 500 }
     );
@@ -71,6 +132,6 @@ export async function POST(req: Request) {
 
 export async function GET() {
   return NextResponse.json({
-    message: "API is running",
+    message: "Poll API Running",
   });
 }
